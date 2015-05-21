@@ -2,6 +2,6 @@ var gulp = require('gulp');
 var reload = require('browser-sync').reload;
 
 gulp.task('watch', function () {
-  gulp.watch('./src-www/**/*', ['build', reload]);
+  gulp.watch('src-www/**/*', ['build', reload]);
 });
 

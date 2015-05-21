@@ -1,0 +1,63 @@
+.carousel {
+  position: relative;
+  width: 100%;
+  padding-bottom: 30px;
+  background: white;
+}
+.carousel.carousel-slider {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+}
+.carousel .slider {
+  -webkit-transition: all 0.35s ease-in;
+  -moz-transition: all 0.35s ease-in;
+  -ms-transition: all 0.35s ease-in;
+  -o-transition: all 0.35s ease-in;
+  transition: all 0.35s ease-in;
+  -webkit-transform: translate3d(0, 0, 0);
+  -moz-transform: translate3d(0, 0, 0);
+  -ms-transform: translate3d(0, 0, 0);
+  -o-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+  position: relative;
+  list-style: none;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.carousel.carousel-slider li {
+  cursor: -webkit-zoom-in;
+}
+.carousel .slide {
+  display: inline-block;
+  width: 260px;
+  margin: 0px;
+  white-space: nowrap;
+}
+.carousel .slide img{
+  vertical-align: top;
+  width: 100%;
+}
+.carousel ol{
+  position: absolute;
+  bottom: 10px;
+  z-index: 13;
+  width: -13330px;
+  text-align: center;
+  list-style: none;
+}
+.carousel .point{
+  width: 8px;
+  height: 8px;
+  border-radius: 4px 4px 4px 4px;
+  -moz-border-radius: 4px 4px 4px 4px;
+  -webkit-border-radius: 4px 4px 4px 4px;
+  border: 0px solid #000000;
+  background: #999;
+  display: inline-block;
+  margin-left: 8px;
+}
+.carousel .point.selected{
+  background: #333;
+}
+

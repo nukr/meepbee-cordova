@@ -1,19 +1,20 @@
 import sa from 'superagent';
 import serverAction from '../actions/ServerActionCreator';
 import viewAction from '../actions/AppActionCreator';
-import { Parse } from 'parse';
 import userStore from '../stores/UserStore';
 import queryHelper from './queryHelper';
 import normalizePhoneNumber from './normalizePhoneNumber';
+import splitChatRoomId from './splitChatRoomId';
 import superlog from './log';
-import config from './config';
+import Parse from './parse-init';
 let log = superlog('utils');
 
 
-let {appId, restAPIKey, jsKey, clientKey} = config;
-let productCounter = 0;
-Parse.initialize(appId, jsKey);
 
+
+
+
+let productCounter = 0;
 let qh = new queryHelper(Parse);
 let alert2 = (msg) => {
   if (navigator.notification) {
@@ -44,34 +45,14 @@ Util.authorize = async (...cert) => {
   }
 };
 
-
-Util.getProducts = async (skip = 0, limit = 10) => {
-  let products;
-  try {
-    products = await qh.getProducts(skip, limit);
-    serverAction.gotProducts(null, products);
-  } catch (e) {
-    serverAction.gotProducts(e);
-  }
-
-  let related = await qh.getProductsRelated(products);
-  serverAction.gotProductsRelated(related);
-
-  if (Parse.User.current()) {
-    let friends = await qh.getFriends(Parse.User.current());
-    let promises = friends.map(friend => qh.getProductsSaleByUser(friend));
-    let productsSellByFriends = await Promise.all(promises);
-    serverAction.gotFriends({friends, productsSellByFriends});
-  }
-};
-
 Util.getProductById = async (id) => {
-  let product = await qh.getProductById(id);
-  let productsSellByUser = await qh.getProductsSaleByUser(product.get('seller'));
-  let likes = await qh.getLikes(product);
-  let comments = await qh.getComments(product);
-  let fetchedAt = new Date().getTime();
-  serverAction.gotProduct({product, likes, comments, productsSellByUser, fetchedAt});
+  let productContainer = await Parse.Cloud.run('getProductById', {productId: id});
+  serverAction.gotProduct(productContainer);
+}
+
+Util.getProductsSellByUser = async (user) => {
+  let productsSellByUser = await qh.getProductsSaleByUser(user)
+  serverAction.gotProductsSellByUser(productsSellByUser, user.id);
 }
 
 Util.login = async (cert) => {
@@ -192,6 +173,7 @@ Util.getMessage = async () => {
     .include('product')
     .include('seller')
     .include('lastUser')
+    .descending('updatedAction')
     .equalTo('user', Parse.User.current());
   let messages = await messagesQuery.find();
   serverAction.gotMessage(messages);
@@ -210,13 +192,19 @@ Util.getOrderMessage = async () => {
 };
 
 Util.getChat = async (chatRoomId) => {
+  let {buyerId, productId, sellerId} = splitChatRoomId(chatRoomId);
+
+  let Products = Parse.Object.extend('Products');
+  let productQuery = new Parse.Query(Products);
+  let product = await productQuery.get(productId);
+
   let Chats = Parse.Object.extend('Chats');
   let chatsQuery = new Parse.Query(Chats);
   chatsQuery
     .equalTo('chatRoomId', chatRoomId)
     .include('user');
   let chats = await chatsQuery.find();
-  serverAction.gotChat(chatRoomId, chats);
+  serverAction.gotChat(chatRoomId, chats, product);
 };
 
 Util.getUser = async () => {
@@ -309,7 +297,6 @@ Util.getContactsNumberAndRebuildFriendsRelation = async () => {
   if (typeof cordova !== 'undefined') {
     let numbers = await getNumbersInContacts();
     let result = await Util.findFriendByPhones(numbers);
-    log(result);
   }
 };
 
@@ -354,7 +341,7 @@ Util.getUserProfile = async (id) => {
   let follows = await qh.getFollows(user);
   let fans = await qh.getFans(user);
   let products = await qh.getProductsSaleByUser(user);
-  let isFollowed = fans.some(fan => fan.id === me.id);
+  let isFollowed = fans.some(fan => fan.id === me && me.id);
   let fetchedAt = new Date().getTime();
   serverAction.gotUserProfile({user, fans, follows, products, isFollowed, fetchedAt});
 };
@@ -390,7 +377,62 @@ Util.getVideoProducts = async () => {
   serverAction.gotVideoProducts(await query.find());
 }
 
-Util.getChat = async (id) => {
+Util.getComments = async (id) => {
+  let Comments = Parse.Object.extend('Comments');
+  let Products = Parse.Object.extend('Products');
+  let query = new Parse.Query(Comments);
+  let product = new Products();
+  product.id = id;
+  query.equalTo('product', product);
+  query.include('commenter');
+  query.descending('createdAt');
+  serverAction.gotComments(await query.find(), id);
+}
+
+Util.getUserFollows = async (id) => {
+  let follows = await qh.getFollows(id);
+  serverAction.gotFollows(follows, id);
+}
+
+Util.getUserFans = async (id) => {
+  let fans = await qh.getFans(id);
+  serverAction.gotFans(fans, id);
+}
+
+Util.getProductWithRelated = async (skip = 0) => {
+  let limit = 10;
+  try {
+    let result = await Parse.Cloud.run('productWithRelated', {skip, limit});
+    serverAction.gotProducts(result);
+  } catch (e) {
+  }
+}
+
+Util.getFriendWithRelated = async () => {
+  let result = await Parse.Cloud.run('friendWithRelated');
+  serverAction.gotFriends(result);
+}
+
+Util.getProductAndFriend = async () => {
+  await Util.getProductWithRelated();
+  Util.getFriendWithRelated();
+}
+
+Util.getProductsByUser = async (userId) => {
+  let products = await Parse.Cloud.run('getProductsByUser', {userId: userId});
+}
+
+Util.updateMessage = async (chatRoomId, msg) => {
+  let Messages = Parse.Object.extend('Messages')
+  let messageQuery = new Parse.Query(Messages);
+  let messages = await messageQuery.equalTo('chatRoomId', chatRoomId).find();
+
+  let messagesPromises = messages.map(message => {
+    message.set('lastMessage', msg)
+    message.set('lastUser', Parse.User.current())
+    message.set('updatedAction', new Date())
+    return message.save();
+  });
 }
 
 export default Util;

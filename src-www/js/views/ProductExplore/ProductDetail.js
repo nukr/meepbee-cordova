@@ -13,21 +13,15 @@ let log = superlog('ProductDetail');
 class ProductDetail extends React.Component {
   constructor (props, context) {
     super();
-    this.handleLike = () => {
-      let user = UserStore.getCurrentUser();
-      if (user && user.authenticated()) {
-        if (typeof this.props.product.liked === 'undefined') {
-          action.like(this.props.product);
-        } else {
-          action.unlike(this.props.product);
-        }
-      } else {
-        console.log('沒登入點個屁啊');
-      }
+    this.handleLike = (productId) => {
+      action.toggleLike(productId)
     };
     this.handleClick = (productId) => {
       context.router.replaceWith(`/products/${productId}`);
     };
+    this.handleComment = (productId) => {
+      context.router.transitionTo(`/comment/${productId}`);
+    }
   }
 
   static get contextTypes () {
@@ -37,14 +31,15 @@ class ProductDetail extends React.Component {
   }
 
   render () {
-    let {product, likes, liked, comments, productsSellByUser} = this.props;
-    productsSellByUser = productsSellByUser.filter(p => p.id !== product.id);
+    let {product, likes, liked, comments} = this.props.productContainer;
+    let {productsSellByUser} = this.props;
     let seller = product && product.get('seller').toJSON();
+    productsSellByUser = productsSellByUser.filter(p => p.id !== product.id);
 
     return (
       <div>
         <Panel>
-          <div style={{padding: '20px'}}>
+          <div style={{padding: '10px'}}>
             <div style={styles.title}>{product.get('title')}</div>
             <small style={styles.small}>{product.get('location')}</small>
             <pre style={{wordWrap: 'break-word'}}>{product.get('story')}</pre>
@@ -52,12 +47,12 @@ class ProductDetail extends React.Component {
 
           <DivHr />
 
-          <div style={{padding: '20px'}}>
+          <div style={{padding: '10px'}}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
               <div style={{display: 'flex', alignItems: 'center'}}>
                 <div>
                   <img
-                    style={{width: '48px'}}
+                    style={{width: '48px', borderRadius: '24px'}}
                     src={seller.avatarImage ? seller.avatarImage.url : require('../../../assets/elements/img_avatar_nophoto.png')}
                     alt="avatar image" />
                 </div>
@@ -77,7 +72,7 @@ class ProductDetail extends React.Component {
                 style={m(
                   {flex: 1}
                 )}
-                onTouchTap={this.handleLike}>
+                onTouchTap={this.handleLike.bind(null, product.id)}>
                 {
                   liked
                     ?
@@ -87,14 +82,14 @@ class ProductDetail extends React.Component {
                 }
                 喜歡
               </HollowButton>
-              <HollowButton style={{flex: 1}} onTouchTap={this.handleComment}>
+              <HollowButton style={{flex: 1}} onTouchTap={this.handleComment.bind(null, product.id)}>
                 <img src={require('../../../assets/elements/btn_icon_message_white.png')}/>
                 留言
               </HollowButton>
             </div>
             <div>
               <div style={{marginTop: '7px'}}>{(likes && likes.length) || 0} 個人 <small style={{color: 'lightgray'}}>喜歡這個商品</small></div>
-              <div style={{marginTop: '7px'}}>{(comments && comments.length) || 0} 的留言</div>
+              <div style={{marginTop: '7px'}}>{(comments && comments.length) || 0} 個留言</div>
               <div style={{color: 'lightgray', fontSize: '0.8em', marginTop: '7px'}}>成為第一個留言的人</div>
             </div>
           </div>
@@ -113,7 +108,7 @@ class ProductDetail extends React.Component {
               //<button>檢舉</button>
             //</div>
           //</Panel>
-          }
+        }
 
         <PanelHeader>{product.get('seller').get('name')}的其他商品</PanelHeader>
         <Panel>

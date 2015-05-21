@@ -49,7 +49,7 @@ class ProductImage extends React.Component {
     let images = [for (t of product.get('thumbnailImages')) {src: t.url()}];
 
     return (
-      <div style={styles.productImageWrapper} onTouchTap={this.handleClick.bind(null, product, 'product-detail')}>
+      <div style={styles.productImageWrapper} onTouchTap={this.props.detailFn}>
         <Carousel images={images}/>
         <div onTouchTap={this.showUserProfile.bind(null, seller.id)} style={styles.avatar}>
           <img

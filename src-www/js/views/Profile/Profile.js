@@ -81,6 +81,11 @@ class Profile extends React.Component {
     };
   }
 
+  static willTransitionTo (transition) {
+    let user = UserStore.getState().currentUser;
+    if (!(user && user.authenticated())) transition.redirect('/login');
+  }
+
   componentDidMount () {
     UserStore.addChangeListener(this.change);
   }
@@ -94,7 +99,7 @@ class Profile extends React.Component {
 
     return (
       <FlexLayout>
-        <Header title="簡介"/>
+        <Header title="簡介" back={true}/>
         <Content>
           <ProfileUpper user={user} fans={fans} follows={follows}/>
           <Panel>
@@ -104,9 +109,9 @@ class Profile extends React.Component {
 
           <Panel>
             <PanelLink to="/order">訂單</PanelLink>
+            <PanelLink to="/sale-by-me">販售的商品</PanelLink>
             {
-              //<PanelLink to="/sale">販售的商品</PanelLink>
-              //<PanelLink to="/bought">購買過的商品</PanelLink>
+              // <PanelLink to="/bought">購買過的商品</PanelLink>
             }
           </Panel>
 

@@ -4,6 +4,26 @@ import styles from './styles';
 let m = Object.assign;
 
 class ProfileUpper extends Component {
+  constructor (props, context) {
+    super();
+    this.fansFn = (id) => {
+      if (id) {
+        context.router.transitionTo(`/fans-list/${id}`)
+      }
+    }
+    this.followsFn = (id) => {
+      if (id) {
+        context.router.transitionTo(`/follows-list/${id}`)
+      }
+    }
+  }
+
+  static get contextTypes () {
+    return {
+      router: React.PropTypes.func.isRequired
+    };
+  }
+
   static get propTypes () {
     return {
       fans: React.PropTypes.number,
@@ -29,7 +49,12 @@ class ProfileUpper extends Component {
         </div>
         <div style={{marginTop: '30px'}}>{user && user.get('name')}</div>
         <div onTouchTap={this.props.btnAction} style={m({}, styles.editBtn, isFollowed && styles.followed)}>{isFollowed ? <i className="fa fa-check">已追蹤</i> : <i className="fa fa-plus">追蹤</i>}</div>
-        <FansAndFollowers fans={fans} follows={follows}/>
+        <FansAndFollowers
+          fans={fans}
+          follows={follows}
+          fansFn={this.fansFn.bind(null, user && user.id)}
+          followsFn={this.followsFn.bind(null, user && user.id)}
+        />
       </div>
     );
   }

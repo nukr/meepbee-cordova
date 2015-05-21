@@ -1,9 +1,11 @@
 import React from 'react';
 import {Panel, PanelHeader, PanelLink, PanelRadio, PanelRadioGroup, PanelInput, PanelLabel, IncrementButton} from '../Panels';
-import {Header, Footer, FlexLayout, Content} from '../Layout';
+import {Header, FlexLayout, Content} from '../Layout';
+import ProductInfoFooter from '../Layout/ProductInfoFooter';
 import ProductImage from './ProductImage';
 import ProductDetail from './ProductDetail';
 import ProductStore from '../../stores/ProductStore';
+import UserStore from '../../stores/UserStore';
 import Router from 'react-router';
 import Spinner from '../Components/Spinner';
 import styles from './styles';
@@ -13,21 +15,45 @@ let m = Object.assign;
 import action from '../../actions/AppActionCreator';
 
 let getState = (id) => {
-  let productContainer = ProductStore.getProductById(id);
-  let {loading} = productContainer;
-  return m(productContainer, {loading: loading});
+  let {loading, productContainer, productsSellByUser} = ProductStore.getProductById(id);
+  let me = UserStore.getCurrentUser();
+
+  return {
+    loading: loading,
+    isOwnedByMe: (me && me.id) === (productContainer && productContainer.product.get('seller').id),
+    productContainer: productContainer,
+    productsSellByUser: productsSellByUser || []
+  }
 };
 
 class ProductInfo extends React.Component {
   constructor (props, context) {
+    let productId = context.router.getCurrentParams().productId;
     super();
-    this.state = getState(context.router.getCurrentParams().productId);
-    this.change = () => {
-      this.setState(getState(context.router.getCurrentParams().productId));
-    };
+    this.state = getState(productId);
+    this.change = () => this.setState(getState(productId));
     this.share = () => {
       window.plugins.socialsharing.share(null, null, null, `http://meepbee.com/product/${context.router.getCurrentParams().productId}`);
     };
+
+    /**
+     * Footer Function Callbacks
+     *
+     */
+    this.deleteProductFn = (product) => {
+      log('deleteProductFn', product)
+    }
+    this.editProductFn = (product) => {
+      log('editProductFn', product)
+    }
+    this.buyProductFn = (product) => {
+      context.router.transitionTo(`/products/cart/${product.id}`)
+    }
+    this.chatRoomFn = (product) => {
+      let me = UserStore.getCurrentUser();
+      let seller = product.get('seller')
+      context.router.transitionTo(`/chatroom/${me.id}${product.id}${seller.id}`)
+    }
   }
 
   static get contextTypes () {
@@ -61,7 +87,7 @@ class ProductInfo extends React.Component {
   }
 
   render () {
-    let {product, likes, liked, comments} = this.state;
+    let {productContainer, productsSellByUser} = this.state;
     if (this.state.loading) {
       return (
         <Spinner display={this.state.loading} message="讀取中"/>
@@ -71,11 +97,18 @@ class ProductInfo extends React.Component {
         <FlexLayout>
           <Header title="商品資訊" back={true} action={this.share} icon="share-alt" />
           <Content>
-            <ProductImage productContainer={this.state} />
-            <ProductDetail {...this.state} />
+            <ProductImage productContainer={this.state.productContainer} />
+            <ProductDetail productContainer={this.state.productContainer} productsSellByUser={productsSellByUser}/>
             <Spinner display={this.state.loading} message="讀取中"/>
           </Content>
-          <Footer mode="info" product={this.state.product}/>
+          <ProductInfoFooter
+            deleteProductFn={this.deleteProductFn.bind(null, productContainer.product)}
+            editProductFn={this.editProductFn.bind(null, productContainer.product)}
+            chatRoomFn={this.chatRoomFn.bind(null, productContainer.product)}
+            buyProductFn={this.buyProductFn.bind(null, productContainer.product)}
+            isOwnedByMe={this.state.isOwnedByMe}
+            product={productContainer.product}
+          />
         </FlexLayout>
       );
     }

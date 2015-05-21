@@ -8,18 +8,28 @@ class queryHelper {
   }
 
   async getFollows (user) {
+    if (typeof user === 'string') {
+      let query = new this.Parse.Query(this.Parse.User);
+      user = await query.get(user);
+    }
     let Follows = this.Parse.Object.extend('Follows');
     let followsQuery = new this.Parse.Query(Follows);
     followsQuery.equalTo('from', user);
+    followsQuery.include('toUser');
     let follows = await followsQuery.find();
     follows = follows.map(follow => follow.get('toUser'));
     return follows;
   }
 
   async getFans (user) {
+    if (typeof user === 'string') {
+      let query = new this.Parse.Query(this.Parse.User);
+      user = await query.get(user);
+    }
     let Follows = this.Parse.Object.extend('Follows');
     let fansQuery = new this.Parse.Query(Follows);
     fansQuery.equalTo('toUser', user);
+    fansQuery.include('from');
     let fans = await fansQuery.find();
     fans = fans.map(fan => fan.get('from'));
     return fans;

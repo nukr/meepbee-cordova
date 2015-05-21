@@ -3,11 +3,10 @@ const AppConstants = require('../constants/AppConstants');
 
 let ServerActionCreator = {
 
-  gotProducts (error, products) {
+  gotProducts (products) {
     AppDispatcher.handleServerAction({
       actionType: AppConstants.GOT_PRODUCTS,
-      products: products,
-      error: error
+      products: products
     });
   },
 
@@ -18,10 +17,18 @@ let ServerActionCreator = {
     });
   },
 
-  gotProduct (productAssociate) {
+  gotProduct (productContainer) {
     AppDispatcher.handleServerAction({
       actionType: AppConstants.GOT_PRODUCT,
-      productAssociate: productAssociate
+      productContainer: productContainer
+    });
+  },
+
+  gotProductsSellByUser (productsSellByUser, userId) {
+    AppDispatcher.handleServerAction({
+      actionType: AppConstants.GOT_PRODUCTS_SELL_BY_USER,
+      productsSellByUser: productsSellByUser,
+      userId: userId
     });
   },
 
@@ -81,11 +88,12 @@ let ServerActionCreator = {
     });
   },
 
-  gotChat (chatRoomId, chats) {
+  gotChat (chatRoomId, chats, product) {
     AppDispatcher.handleServerAction({
       actionType: AppConstants.GOT_CHAT,
       chats: chats,
-      chatRoomId: chatRoomId
+      chatRoomId: chatRoomId,
+      product: product
     });
   },
 
@@ -135,6 +143,30 @@ let ServerActionCreator = {
     AppDispatcher.handleServerAction({
       actionType: AppConstants.GOT_VIDEO_PRODUCTS,
       products: products
+    });
+  },
+
+  gotComments (comments, id) {
+    AppDispatcher.handleServerAction({
+      actionType: AppConstants.GOT_COMMENTS,
+      comments: comments,
+      id: id
+    });
+  },
+
+  gotFollows (follows, id) {
+    AppDispatcher.handleServerAction({
+      actionType: AppConstants.GOT_FOLLOWS,
+      follows: follows,
+      id: id
+    });
+  },
+
+  gotFans (fans, id) {
+    AppDispatcher.handleServerAction({
+      actionType: AppConstants.GOT_FANS,
+      fans: fans,
+      id: id
     });
   }
 

@@ -8,6 +8,16 @@ import Router from 'react-router';
 import {Layout, Header, Footer, FlexLayout, Infinite} from '../Layout';
 import superlog from '../../util/log';
 let log = superlog('ProductsContainer');
+let alert2 = (...args) => {
+  if (navigator.notification) {
+    navigator.notification.alert(...args);
+  } else {
+    alert(...args);
+  }
+}
+let isLogged = () => {
+  return UserStore.getCurrentUser() ? true : false;
+}
 
 let getState = () => {
   let {loading, products, friends} = ProductStore.getProducts();
@@ -23,13 +33,22 @@ let lastRefreshing = false;
 let loading = false;
 class ProductsContainer extends Component {
 
-  constructor () {
+  constructor (props, context) {
     super();
     this.state = getState();
     this.change = () => this.setState(getState());
-    this.handleClick = this.handleClick.bind(this);
-    this.purchase = this.purchase.bind(this);
-    this.productDetail = this.productDetail.bind(this);
+    this.purchaseFn = (productId) => {
+      context.router.transitionTo(`/products/cart/${productId}`);
+    }
+    this.detailFn = (productId) => {
+      context.router.transitionTo(`/products/${productId}`);
+    }
+    this.commentFn = (productId, e) => {
+      context.router.transitionTo(`/comment/${productId}`);
+    }
+    this.likeFn = (productId) => {
+      action.toggleLike(productId);
+    }
     this.handleScroll = this.handleScroll.bind(this);
     this.refresh = this.refresh.bind(this);
   }
@@ -52,14 +71,6 @@ class ProductsContainer extends Component {
     ProductStore.removeChangeListener(this.change);
   }
 
-  purchase (product) {
-    this.context.router.transitionTo(`/products/cart/${product.id}`);
-  }
-
-  productDetail (product) {
-    this.context.router.transitionTo(`/products/${product.id}`);
-  }
-
   refresh () {
     action.refresh();
   }
@@ -75,25 +86,6 @@ class ProductsContainer extends Component {
       }
     } else {
       this.context.router.transitionTo('/login');
-    }
-  }
-
-  handleClick (product, from, event) {
-    switch (from) {
-      case 'product-detail':
-        this.productDetail(product);
-        break;
-      case 'purchase':
-        this.purchase(product);
-        break;
-      case 'like':
-        this.like(product);
-        break;
-      case 'comment':
-        alert('comment');
-        break;
-      default:
-        alert('undefined behavior!!');
     }
   }
 
@@ -119,11 +111,15 @@ class ProductsContainer extends Component {
   renderProducts (products) {
     if (products.length) {
       return products.map((productContainer, index) => {
+        let productId = productContainer.product.id;
         return (
           <Product
+            key={`product-${index}`}
+            commentFn={this.commentFn.bind(null, productId)}
+            likeFn={this.likeFn.bind(null, productId)}
+            purchaseFn={this.purchaseFn.bind(null, productId)}
+            detailFn={this.detailFn.bind(null, productId)}
             onTouchTap={this.handleClick}
-            onLoad={this.handleLoaded}
-            key={index}
             productContainer={productContainer}
           />
         );

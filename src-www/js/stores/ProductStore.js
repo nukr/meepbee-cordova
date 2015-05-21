@@ -2,6 +2,7 @@ import AppDispatcher from '../dispatcher/AppDispatcher';
 import AppConstants from '../constants/AppConstants';
 import UserStore from '../stores/UserStore';
 import utils from '../util';
+import Parse from '../util/parse-init.js'
 import _ from 'lodash';
 
 import superlog from '../util/log';
@@ -11,79 +12,25 @@ const EventEmitter = require('events').EventEmitter; // 取得一個 pub/sub 廣
 
 let State = {};
 
-State.page = 0;
 State.products = [];
 State.cropImage = [];
 State.videoThumbnail = '';
 State.videoFilePath = '';
 State.friends = [];
 State.refreshing = false;
-State.cachedProducts = {};
-let originData = {
-  products: [],
-  likes: [],
-  comments: []
-};
+State.cachedComments = {};
+State.productsSellByUser = {};
 
-let productsRework = (products) => {
-  let reworkedProducts = products.map(product => {
-    return {product: product};
-  });
-  State.products = State.products.concat(reworkedProducts);
-};
-
-let relatedRework = (related) => {
-  let {likes, comments} = related;
-  let mappedLikes = {};
-  let mappedComments = {};
-  let mappedLiked = {};
-  let me = UserStore.getCurrentUser();
-
-  likes.forEach(likeContainer => {
-    if (likeContainer.length === 0) return;
-    likeContainer.forEach(l => {
-      let productId = l.get('likedProduct').id;
-      let userId = l.get('likedUser').id;
-      if (typeof mappedLikes[productId] === 'undefined') mappedLikes[productId] = [];
-      mappedLikes[productId].push(l.get('likedUser'));
-      if (me && (me.id === userId)) mappedLiked[productId] = true;
-    });
-  });
-
-  comments.forEach(commentContainer => {
-    if (commentContainer.length === 0) return ;
-    commentContainer.forEach(c => {
-      let productId = c.get('product').id;
-      if (typeof mappedComments[productId] === 'undefined') mappedComments[productId] = [];
-      mappedComments[productId].push(c);
-    });
-  });
-
-  State.products.forEach(productContainer => {
-    let productId = productContainer.product.id;
-    productContainer.likes = mappedLikes[productId];
-    productContainer.comments = mappedComments[productId];
-    productContainer.liked = mappedLiked[productId];
-  });
-};
-
-let like = (likeResult) => {
-  log(likeResult);
-  State.products.forEach(productContainer => {
-    productContainer.product.id === likeResult.get('likedProduct').id
-    if (typeof productContainer.likes === 'undefined') productContainer.likes = [];
-    productContainer.likes.push(likeResult.get('likedUser'));
-    productContainer.liked = true;
-  });
-};
-
-let unlike = (productContainer) => {
-  let myid = UserStore.getCurrentUser().id;
-  productContainer.liked = undefined;
-  let index = State.products.indexOf(productContainer);
-  State.products[index].likes = State.products[index].likes.filter(like => like.id !== myid);
-};
-
+let erase = () => {
+  State.products = [];
+  State.cropImage = [];
+  State.videoThumbnail = '';
+  State.videoFilePath = '';
+  State.friends = [];
+  State.refreshing = false;
+  State.cachedComments = {};
+  State.productsSellByUser = {};
+}
 
 /**
  * @description
@@ -97,37 +44,40 @@ class ProductStore extends EventEmitter {
   }
 
   getProducts () {
-    if (State.products.length === 0) {
-      utils.getProducts();
+    if (State.products.filter(productContainer => productContainer.category === 'main').length === 0) {
+      utils.getProductAndFriend();
       return {loading: true};
     } else {
       return {
-        products: State.products,
-        friends: State.friends
+        loading: false,
+        products: State.products.filter(productContainer => productContainer.category === 'main'),
+        friends: State.friends,
+        scrollTop: State.productContainerScrollTop
       };
     }
   }
 
-  getProductDetail (id) {
-    return State.products.filter(productContainer => {
-      return productContainer.product.id === id;
-    });
-  }
-
   getProductById (id) {
-    let cacheTime = 1000 * 60 * 30; // 30mins
-    if (_.isUndefined(State.cachedProducts[id]) || State.cachedProducts[id].fetchedAt + cacheTime < new Date().getTime()) {
+    let foundProduct = null;
+    State.products.forEach(productContainer => {
+      if (productContainer.product.id === id) foundProduct = productContainer
+    })
+    if (foundProduct) {
+      let sellerId = foundProduct.product.get('seller').id;
+      if (!State.productsSellByUser[sellerId]) utils.getProductsSellByUser(foundProduct.product.get('seller'))
+      return {
+        productContainer: foundProduct,
+        productsSellByUser: State.productsSellByUser[sellerId]
+      }
+    } else {
       utils.getProductById(id);
       return {
         loading: true
-      };
-    } else {
-      return State.cachedProducts[id];
+      }
     }
   }
 
   getVideoProducts () {
-    let cacheTime = 1000 * 60 * 30; // 30mins
     if (_.isUndefined(State.videoProducts)) {
       utils.getVideoProducts();
       return {
@@ -138,6 +88,23 @@ class ProductStore extends EventEmitter {
         products: State.videoProducts
       }
     }
+  }
+
+  getComments (id) {
+    if (_.isUndefined(State.cachedComments[id])) {
+      utils.getComments(id);
+      return {
+        loading: true
+      };
+    } else {
+      return {
+        comments: State.cachedComments[id]
+      }
+    }
+  }
+
+  set productContainerScrollTop (px) {
+    State.productContainerScrollTop = px;
   }
 
   addChangeListener (callback) {
@@ -222,6 +189,13 @@ productStore.dispatchToken = AppDispatcher.register(function eventHandlers (evt)
 
     case AppConstants.LOGOUT:
       log('LOGOUT');
+      erase()
+      productStore.emit(AppConstants.CHANGE_EVENT);
+      break;
+
+    case AppConstants.LOGIN:
+      log('LOGIN');
+      erase()
       productStore.emit(AppConstants.CHANGE_EVENT);
       break;
 
@@ -244,56 +218,27 @@ productStore.dispatchToken = AppDispatcher.register(function eventHandlers (evt)
       productStore.emit(AppConstants.CHANGE_EVENT);
       break;
 
-    case AppConstants.RELATION_USERS:
-      log('RELATION_USERS');
-      State.friends = action.friends;
-      productStore.emit(AppConstants.CHANGE_EVENT);
-      break;
-
     case AppConstants.GOT_PRODUCTS:
       log('GOT_PRODUCTS');
-      // 先檢查有沒有錯誤
-      let {error, products} = action;
-      if (error) {
-        State.error = error;
-        log(error);
-      } else {
-        productsRework(products);
-        productStore.emit(AppConstants.CHANGE_EVENT);
-      }
-      break;
-
-    case AppConstants.GOT_PRODUCTS_RELATED:
-      log('GOT_PRODUCTS_RELATED');
-      relatedRework(action.related);
-      productStore.emit(AppConstants.CHANGE_EVENT);
-      break;
-
-    case AppConstants.FETCH:
-      log('FETCH');
-      State.page += 1;
-      let skip = State.page * 10;
-      utils.getProducts(skip, 10);
+      State.products = State.products.concat(action.products);
       productStore.emit(AppConstants.CHANGE_EVENT);
       break;
 
     case AppConstants.GOT_FRIENDS:
       log('GOT_FRIENDS');
-      let f = action.friends;
-      let friendsAssociated = [];
-      f.friends.forEach((friend, index) => {
-        let products = f.productsSellByFriends[index];
-        if (products.length === 0) return;
-        friendsAssociated.push({friend, products});
-      });
-      State.friends = friendsAssociated;
+      State.friends = action.friends;
       productStore.emit(AppConstants.CHANGE_EVENT);
       break;
 
     case AppConstants.GOT_PRODUCT:
       log('GOT_PRODUCT');
-      let productId = action.productAssociate.product.id;
-      State.cachedProducts[productId] = action.productAssociate;
+      State.products.push(action.productContainer);
+      productStore.emit(AppConstants.CHANGE_EVENT);
+      break;
+
+    case AppConstants.GOT_PRODUCTS_SELL_BY_USER:
+      log('GOT_PRODUCTS_SELL_BY_USER');
+      State.productsSellByUser[action.userId] = action.productsSellByUser;
       productStore.emit(AppConstants.CHANGE_EVENT);
       break;
 
@@ -305,6 +250,51 @@ productStore.dispatchToken = AppDispatcher.register(function eventHandlers (evt)
     case AppConstants.GOT_VIDEO_PRODUCTS:
       log('GOT_VIDEO_PRODUCTS');
       State.videoProducts = action.products;
+      productStore.emit(AppConstants.CHANGE_EVENT);
+      break;
+
+    case AppConstants.GOT_COMMENTS:
+      log('GOT_COMMENTS');
+      let {comments, id} = action;
+      State.cachedComments[id] = comments;
+      productStore.emit(AppConstants.CHANGE_EVENT);
+      break;
+
+    case AppConstants.SEND_COMMENT:
+      log('SEND_COMMENT');
+      let {comment, id} = action;
+      if (evt.source === AppConstants.SOURCE_VIEW_ACTION) {
+        if (_.isUndefined(State.cachedComments[id])) State.cachedComments[id] = [];
+        State.cachedComments[id].unshift(comment);
+      }
+      productStore.emit(AppConstants.CHANGE_EVENT);
+      break;
+
+    case AppConstants.TOGGLE_LIKE:
+      log('TOGGLE_LIKE');
+      let {productId} = action;
+      let foundProductContainer = null;
+      State.products.forEach(productContainer => {
+        if (productContainer.product.id === productId) {
+          foundProductContainer = productContainer;
+        }
+      });
+      if(foundProductContainer.liked) {
+        let removed = _.remove(foundProductContainer.likes, (like) => {
+          return like.get('likedUser').id === UserStore.getCurrentUser().id
+        });
+        foundProductContainer.liked = false;
+        log(removed)
+        removed.forEach(item => item.destroy());
+      } else {
+        let Likes = Parse.Object.extend('Likes');
+        let like = new Likes();
+        like.set('likedProduct', foundProductContainer.product);
+        like.set('likedUser', UserStore.getCurrentUser());
+        foundProductContainer.likes.push(like);
+        foundProductContainer.liked = true;
+        like.save();
+      }
       productStore.emit(AppConstants.CHANGE_EVENT);
       break;
     default:

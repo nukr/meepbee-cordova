@@ -1,44 +1,36 @@
 import React, {Component} from 'react';
 import { Header, Footer, Content, FlexLayout } from '../Layout';
+import Spinner from '../Components/Spinner';
 import action from '../../actions/AppActionCreator';
 import UserStore from '../../stores/UserStore';
 import styles from './styles';
+import superlog from '../../util/log';
+let log = superlog('ChatRoom');
 let m = Object.assign;
 
-let getChat = (id) => {
-  let chat = UserStore.getChat(id);
-  console.log(chat);
-};
+let getState = (chatRoomId) => {
+  let {product, chats, loading} = UserStore.getChat(chatRoomId);
+  let me = UserStore.getCurrentUser();
+
+  return {
+    chats: chats,
+    product: product,
+    me: me,
+    loading: loading
+  }
+}
 
 class ChatRoom extends Component {
   constructor (props, context) {
     super();
-    getChat(context.router.getCurrentParams().chatRoomId);
-    this.state = {
-      unsendMsg: '',
-      chats: UserStore.getCurrentChat(context.router.getCurrentParams().chatRoomId) || [],
-      message: UserStore.getCurrentMessage(context.router.getCurrentParams().chatRoomId),
-      me: UserStore.getCurrentUser()
-    };
-    this.change = () => this.setState({
-      chats: UserStore.getCurrentChat(context.router.getCurrentParams().chatRoomId),
-      message: UserStore.getCurrentMessage(context.router.getCurrentParams().chatRoomId),
-      me: UserStore.getCurrentUser()
-    });
-    this.input = (e) => {
-      this.setState({unsendMsg: e.target.value});
-    };
+    let chatRoomId = context.router.getCurrentParams().chatRoomId
+    this.state = getState(chatRoomId);
+    this.state.unsendMsg = '';
+    this.change = () => this.setState(getState(chatRoomId));
+    this.input = (e) => this.setState({unsendMsg: e.target.value});
     this.send = (e) => {
-      let message = this.state.message;
-      let me = this.state.me;
-      let oppo;
-      if (message.get('buyer').id === me.id) {
-        oppo = this.state.message.get('seller');
-      } else {
-        oppo = this.state.message.get('buyer');
-      }
       if (this.state.unsendMsg.length !== 0) {
-        action.sendMsg(this.context.router.getCurrentParams().chatRoomId, this.state.unsendMsg, oppo);
+        action.sendMsg(chatRoomId, this.state.unsendMsg, this.state.product);
         this.state.unsendMsg = '';
         this.refs.chatInput.getDOMNode().value = '';
       }
@@ -66,49 +58,15 @@ class ChatRoom extends Component {
   }
 
   render () {
-    let chats = this.state.chats;
-    let message = this.state.message;
-    let product = message.get('product');
-    let order = message.get('order');
-
-    let imgSrc;
-    if (product) {
-      imgSrc = product.get('thumbnailImages')[0].url();
-    } else {
-      imgSrc = order.get('orderForm').productImageURL;
+    let {chats, product} = this.state
+    if (this.state.loading) {
+      return <Spinner display={true} message="讀取中"/>
     }
-
-    let title;
-    if (product) {
-      title = product.get('title');
-    } else {
-      title = order.get('orderForm').realName + order.id;
-    }
-
-    let price;
-    if (product) {
-      price = product.get('price');
-    } else {
-      price = order.get('orderForm').pricePerProduct;
-    }
-
-    let productTitle;
-    if (product) {
-      productTitle = product.get('title');
-    } else {
-      productTitle = order.get('orderForm').title;
-    }
-
-    let me = this.state.me;
     return (
       <FlexLayout>
-        <Header title={title} back={true}/>
+        <Header title={product.get('title')} back={true}/>
         <Content ref="content">
-          <div style={{display: 'flex', backgroundColor: 'lightgray'}}>
-            <div><img src={imgSrc} width="64px" height="64px"/></div>
-            <div style={{display: 'flex', flex: 1, alignItems: 'center'}}>{productTitle}</div>
-            <div style={{display: 'flex', alignItems: 'center'}}>{price}</div>
-          </div>
+          <Product product={product}/>
           <div style={{display: 'flex', flexFlow: 'column', padding: '10px'}}>
             {chats.map((chat, index) => {
               return (
@@ -127,6 +85,22 @@ class ChatRoom extends Component {
         </div>
       </FlexLayout>
     );
+  }
+}
+class Product extends Component {
+  render () {
+    let product = this.props.product;
+    let imgSrc = product.get('thumbnailImages')[0].url();
+    let title = product.get('title');
+    let price = product.get('price');
+    let productTitle = product.get('title');
+    return (
+      <div style={{display: 'flex', backgroundColor: 'lightgray'}}>
+        <div><img src={imgSrc} width="64px" height="64px"/></div>
+        <div style={{display: 'flex', flex: 1, alignItems: 'center'}}>{productTitle}</div>
+        <div style={{display: 'flex', alignItems: 'center'}}>{price}</div>
+      </div>
+    )
   }
 }
 

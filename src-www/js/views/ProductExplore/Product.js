@@ -6,8 +6,20 @@ class Product extends React.Component {
   render () {
     return (
       <div>
+
+
+
+
         <ProductImage {...this.props}/>
+
+
+
         <ProductBrief {...this.props}/>
+
+
+
+
+
       </div>
     );
   }

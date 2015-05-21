@@ -25,12 +25,12 @@ class ProductBrief extends React.Component {
           <div style={styles.flexRow}>
             <HollowButton
               style={liked ? styles.likeRedIcon : styles.likeGrayIcon}
-              onTouchTap={this.props.onTouchTap.bind(null, this.props.productContainer, 'like')} />
-            <HollowButton style={styles.commentIcon} />
+              onTouchTap={this.props.likeFn} />
+            <HollowButton onTouchTap={this.props.commentFn} style={styles.commentIcon} />
           </div>
 
           <HollowButton
-            onTouchTap={this.props.onTouchTap.bind(null, this.props.productContainer.product, 'purchase')}
+            onTouchTap={this.props.purchaseFn}
             style={{background: globalStyles.meepbeeColor, color: 'white'}}>
             購買
           </HollowButton>

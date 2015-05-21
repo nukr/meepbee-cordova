@@ -1,8 +1,10 @@
 import AppDispatcher from '../dispatcher/AppDispatcher';
 import AppConstants from '../constants/AppConstants';
 import util from '../util';
+import Parse from '../util/parse-init';
 import superlog from '../util/log';
 let log = superlog('ViewAction');
+let skip = 0;
 
 let AppActionCreators = {
 
@@ -142,7 +144,6 @@ let AppActionCreators = {
 
   getMessage () {
     util.getMessage();
-    util.getOrderMessage();
   },
 
   getUser () {
@@ -153,8 +154,13 @@ let AppActionCreators = {
     util.getChat(id);
   },
 
-  sendMsg (chatRoomId, msg, oppo) {
-    util.sendMsg(chatRoomId, msg, oppo);
+  sendMsg (chatRoomId, msg, product) {
+    AppDispatcher.handleViewAction({
+      actionType: AppConstants.SEND_MSG,
+      chatRoomId: chatRoomId,
+      msg: msg,
+      product: product
+    });
   },
 
   createOrder (order) {
@@ -175,28 +181,6 @@ let AppActionCreators = {
     AppDispatcher.handleServerAction({
       actionType: AppConstants.SIGNUP,
       result: result
-    });
-  },
-
-  async cloudtest () {
-    log('action.cloudtest');
-    let arr  = [];
-    for (var i=0; i < 1000; ++i) {
-      if (i % 2) {
-        arr.push('0917-890-899');
-      } else {
-        arr.push('0961-007-003');
-      }
-    }
-    let result = await util.cloudtest(arr);
-    log(result);
-  },
-
-  async findRelation () {
-    let users = await util.findRelation();
-    AppDispatcher.handleServerAction({
-      actionType: AppConstants.RELATION_USERS,
-      users: users
     });
   },
 
@@ -230,7 +214,38 @@ let AppActionCreators = {
       actionType: AppConstants.DELETE_SHIPPING,
       indexOfShipping: indexOfShipping
     });
+  },
+
+  async sendComment (msg, id) {
+    let Comments = Parse.Object.extend('Comments');
+    let comment = new Comments();
+    comment.set('commenter', Parse.User.current());
+    comment.set('content', msg);
+    comment.set('product', {__type: 'Pointer', className: 'Products', objectId: id});
+    AppDispatcher.handleViewAction({
+      actionType: AppConstants.SEND_COMMENT,
+      comment: comment,
+      id: id
+    });
+    let result = await comment.save();
+    AppDispatcher.handleServerAction({
+      actionType: AppConstants.SEND_COMMENT,
+      comment: comment,
+      id: id
+    });
+  },
+
+  infinite () {
+    util.getProductWithRelated(skip += 10);
+  },
+
+  toggleLike (productId) {
+    AppDispatcher.handleViewAction({
+      actionType: AppConstants.TOGGLE_LIKE,
+      productId: productId
+    })
   }
+
 };
 
 module.exports = AppActionCreators;

@@ -2,6 +2,7 @@ import AppDispatcher from '../dispatcher/AppDispatcher';
 import AppConstants from '../constants/AppConstants';
 import utils from '../util';
 import Immutable from 'immutable';
+import splitChatRoomId from '../util/splitChatRoomId';
 import {Parse} from 'parse';
 import _ from 'lodash';
 
@@ -18,6 +19,8 @@ State.orderMessages = [];
 State.messages = [];
 State.mappedMsg = {};
 State.mappedOrderMsg = {};
+State.cachedFollows = {};
+State.cachedFans = {};
 State.users = [];
 State.chats = {};
 State.orders = [];
@@ -31,6 +34,32 @@ State.signUpStatus = {
   status: null,
   reason: null
 };
+
+let erase = () => {
+  State.allUsers = [];
+  State.loggingIn = false;
+  State.currentUser = null;
+  State.sellForm = {};
+  State.orderMessages = [];
+  State.messages = [];
+  State.mappedMsg = {};
+  State.mappedOrderMsg = {};
+  State.cachedFollows = {};
+  State.cachedFans = {};
+  State.users = [];
+  State.chats = {};
+  State.orders = [];
+  State.mappedOrders = {};
+  State.buyer = [];
+  State.seller = [];
+  State.fans = [];
+  State.follows = [];
+  State.signUpStatus = {
+    signing: false,
+    status: null,
+    reason: null
+  };
+}
 
 State.userProfiles = {};
 
@@ -49,17 +78,16 @@ class UserStore extends EventEmitter {
     return State;
   }
 
-  getChat (id) {
-    let cacheTime = 1000 * 60 * 30; // 30mins
-    if (_.isUndefined(State.cachedChats[id]) || State.cachedChats[id].fetchedAt + cacheTime < new Date().getTime()) {
-      utils.getChat(id);
+  getChat (chatRoomId) {
+    if (State.chats[chatRoomId]) {
+      return {
+        chats: State.chats[chatRoomId].chats,
+        product: State.chats[chatRoomId].product
+      }
+    } else {
       return {
         loading: true
       };
-    } else {
-      return {
-        chat: State.cacheChats[id]
-      }
     }
   }
 
@@ -81,6 +109,32 @@ class UserStore extends EventEmitter {
       return {loading: true, users: State.allUsers};
     } else {
       return {users: State.allUsers};
+    }
+  }
+
+  getFollows (id) {
+    if (_.isUndefined(State.cachedFollows[id])) {
+      utils.getUserFollows(id);
+      return {
+        loading: true
+      };
+    } else {
+      return {
+        follows: State.cachedFollows[id]
+      }
+    }
+  }
+
+  getFans (id) {
+    if (_.isUndefined(State.cachedFans[id])) {
+      utils.getUserFans(id);
+      return {
+        loading: true
+      };
+    } else {
+      return {
+        fans: State.cachedFans[id]
+      }
     }
   }
 
@@ -167,6 +221,7 @@ userStore.dispatchToken = AppDispatcher.register(function eventHandlers (evt) {
         userStore.erase();
         State.loggingOut = false;
       }
+      erase();
       userStore.emit(AppConstants.CHANGE_EVENT);
       break;
 
@@ -207,21 +262,66 @@ userStore.dispatchToken = AppDispatcher.register(function eventHandlers (evt) {
 
     case AppConstants.GOT_CHAT:
       log('GOT_CHAT');
-      State.chats[action.chatRoomId] = action.chats;
+      State.chats[action.chatRoomId] = {
+        chats: action.chats,
+        product: action.product
+      };
       userStore.emit(AppConstants.CHANGE_EVENT);
       break;
 
     case AppConstants.GOT_USER_PROFILE:
       log('GOT_USER_PROFILE');
       State.userProfiles[action.userProfile.user.id] = action.userProfile;
-      // console.log(action.user);
-      // State.users = action.users;
        userStore.emit(AppConstants.CHANGE_EVENT);
       break;
 
     case AppConstants.SEND_MSG:
       log('SEND_MSG');
-      State.chats[action.chat.get('chatRoomId')].push(action.chat);
+      let {chatRoomId, msg, product} = action;
+      let {buyerId, productId, sellerId} = splitChatRoomId(chatRoomId);
+      let seller = new Parse.User()
+      seller.id = sellerId;
+      let buyer = new Parse.User()
+      buyer.id = buyerId;
+      let Chats = Parse.Object.extend('Chats');
+      let chat = new Chats();
+      let Messages = Parse.Object.extend('Messages');
+      if (State.chats[chatRoomId].chats.length === 0) {
+        let message1 = new Messages();
+        message1.set('chatRoomId', chatRoomId)
+        message1.set('counter', 0)
+        message1.set('description', product.get('title'))
+        message1.set('lastMessage', msg)
+        message1.set('lastUser', State.currentUser)
+        message1.set('product', product)
+        message1.set('seller', seller)
+        message1.set('buyer', buyer)
+        message1.set('user', seller)
+        message1.set('updatedAction', new Date())
+
+        let message2 = new Messages();
+        message2.set('chatRoomId', chatRoomId)
+        message2.set('counter', 0)
+        message2.set('description', product.get('title'))
+        message2.set('lastMessage', msg)
+        message2.set('lastUser', State.currentUser)
+        message2.set('product', product)
+        message2.set('seller', seller)
+        message2.set('buyer', buyer)
+        message2.set('user', buyer)
+        message2.set('updatedAction', new Date())
+        message1.save();
+        message2.save();
+      } else {
+        utils.updateMessage(chatRoomId, msg);
+      }
+
+      chat.set('chatRoomId', chatRoomId)
+      chat.set('user', State.currentUser)
+      chat.set('text', msg)
+      chat.save();
+
+      State.chats[chatRoomId].chats.push(chat);
       userStore.emit(AppConstants.CHANGE_EVENT);
       break;
 
@@ -235,7 +335,7 @@ userStore.dispatchToken = AppDispatcher.register(function eventHandlers (evt) {
     case AppConstants.AUTHORIZED:
       log('AUTHORIZED');
       State.currentUser = action.auth;
-      userStore.emit(AppConstants.CHANGE_EVENT);
+      // userStore.emit(AppConstants.CHANGE_EVENT);
       break;
 
     case AppConstants.SIGNUP:
@@ -298,6 +398,22 @@ userStore.dispatchToken = AppDispatcher.register(function eventHandlers (evt) {
       let {indexOfShipping} = action;
       let removed = State.currentUser.get('shippings').splice(indexOfShipping, 1);
       utils.updateCurrentUser();
+      userStore.emit(AppConstants.CHANGE_EVENT);
+      break;
+    }
+
+    case AppConstants.GOT_FOLLOWS: {
+      log('GOT_FOLLOWS');
+      let {follows, id} = action;
+      State.cachedFollows[id] = follows;
+      userStore.emit(AppConstants.CHANGE_EVENT);
+      break;
+    }
+
+    case AppConstants.GOT_FANS: {
+      log('GOT_FANS');
+      let {fans, id} = action;
+      State.cachedFans[id] = fans;
       userStore.emit(AppConstants.CHANGE_EVENT);
       break;
     }

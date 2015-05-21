@@ -25,14 +25,14 @@ module.exports = {
     flex: 1,
     textDecoration: 'none',
     color: 'lightgray',
-    fontSize: '0.7em'
+    fontSize: '12px'
   },
   footerBtnInner: {
     flex: 1,
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'flex-end',
-    marginBottom: '5px'
+    marginBottom: '2px'
   },
   img: {
     width: '48px',
@@ -120,7 +120,7 @@ module.exports = {
 
   backgroundSettings: {
     backgroundRepeat: 'no-repeat',
-    backgroundPosition: '50% 20%',
+    backgroundPosition: '50% 0%',
     backgroundSize: '48px'
   },
 

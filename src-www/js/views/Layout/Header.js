@@ -31,6 +31,10 @@ class Header extends React.Component {
         <i style={{fontSize: '26px'}} className="fa fa-arrow-left"></i>
       </div>
     );
+    let dummy = (
+      <div style={{width: '60px', height: '100px', display: 'flex', justifyContent: 'center', alignItems: 'center'}} onTouchTap={this.handleBack}>
+      </div>
+    );
     // dummy div placeholder
     let action = <div style={{marginRight: '20px', width: '40px', height: '40px'}}></div>;
 
@@ -46,14 +50,14 @@ class Header extends React.Component {
         Object.assign(
           {},
           styles.header,
-          this.props.back && styles.spaceBetween
+          styles.spaceBetween
         )
       }>
-        {this.props.back && back}
+        {this.props.back && back || dummy}
         <div>
           {this.props.title === 'meepbee' ? img : this.props.title}
         </div>
-        {this.props.back && action}
+        {this.props.action && action || dummy}
       </header>
     );
   }

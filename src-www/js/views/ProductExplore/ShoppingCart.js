@@ -13,7 +13,7 @@ let handlers = {
   change () {
     this.setState({
       UserStore: UserStore.getState(),
-      productContainer: ProductStore.getProductById(this.context.router.getCurrentParams().productId)
+      productContainer: ProductStore.getProductById(this.context.router.getCurrentParams().productId).productContainer
     });
   },
 
@@ -132,16 +132,11 @@ class ShoppingCart extends React.Component {
   }
 
   render () {
+    log(this.state);
     let {product} = this.state.productContainer;
     if (typeof product === 'undefined') {
       return (
-        <div style={{
-          display: 'flex',
-          flex: 1,
-          justifyContent: 'center'
-        }}>
-          <Spinner display={true} message="讀取中"></Spinner>
-        </div>
+        <Spinner display={true} message="讀取中"/>
       );
     } else {
       let {productPrice, totalPrice, shippingFee} = this.calc();

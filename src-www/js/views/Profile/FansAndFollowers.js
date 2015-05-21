@@ -10,14 +10,15 @@ class fansAndFollower extends React.Component {
         width: '100%',
         marginTop: '100px'
       }}>
+
         <div style={styles.fansAndFollowers}>
-          <div style={{
+          <div onClick={this.props.fansFn} style={{
             flex: 1,
             textAlign: 'center'
           }}>
             {this.props.fans}
           </div>
-          <div style={{
+          <div onClick={this.props.followsFn} style={{
             flex: 1,
             textAlign: 'center'
           }}>
@@ -26,19 +27,20 @@ class fansAndFollower extends React.Component {
         </div>
 
         <div style={styles.fansAndFollowers}>
-          <div style={{
+          <div onClick={this.props.fansFn} style={{
             borderRight: '1px solid black',
             flex: 1,
             textAlign: 'center'
           }}>
             粉絲人數
           </div>
-          <div style={{
+          <div onClick={this.props.followsFn} style={{
             flex: 1,
             textAlign: 'center'
           }}>
             追蹤人數
           </div>
+
         </div>
       </div>
     );

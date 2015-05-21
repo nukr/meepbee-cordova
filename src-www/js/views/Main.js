@@ -26,8 +26,12 @@ import OrderStatus from './Profile/OrderStatus';
 import OrderList from './Profile/OrderList';
 import SignUp from './Profile/SignUp';
 import UserProfile from './Profile/UserProfile';
-import FollowList from './FollowList';
-import Video from './Video.react.js'
+import FollowsList from './FollowsList';
+import FansList from './FansList';
+import CommentBox from './CommentBox.react';
+import SaleByMe from './SaleByMe.react';
+import Video from './Video.react'
+import TestInfinite from './ProductExplore/TestInfinite';
 import { Sell, PaymentSelect, ShippingSelect } from './Sell'
 import {
   Profile, Payments, Shippings, Personally,
@@ -66,7 +70,7 @@ class Main extends Component {
 
 let routes = (
   <Route name="app" path="/" handler={Main}>
-    <Route name="products" path="/products" handler={ProductsContainer}>Products</Route>
+    <Route name="products" path="/products" handler={TestInfinite}>Products</Route>
     <Route name="product-detail" path="/products/:productId" handler={ProductInfo}>Product Information</Route>
     <Route name="shopping-cart" path="/products/cart/:productId" handler={ShoppingCart}>Shopping Cart</Route>
     <Route name="profile" path="/profile" handler={Profile}>Profile</Route>
@@ -92,11 +96,18 @@ let routes = (
     <Route name="order-status" path="/order-status/:orderId" handler={OrderStatus}>OrderStatus</Route>
     <Route name="order" path="/order" handler={Order}>Order</Route>
     <Route name="video" path="/video" handler={Video}>Video</Route>
+    <Route name="comment" path="/comment/:productId" handler={CommentBox}>CommentBox</Route>
     <Route name="edit-personal-data" path="/edit-personal-data" handler={EditPersonalData}>EditPersonalData</Route>
+
+
+
     <Route name="signup" path="/signup" handler={SignUp}>SignUp</Route>
     <Route name="user-profile" path="/user-profile/:userId" handler={UserProfile}>UserProfile</Route>
-    <Route name="follow-list" path="/follow-list/:userId" handler={FollowList}>FollowList</Route>
-    <DefaultRoute handler={ProductsContainer} />
+    <Route name="follows-list" path="/follows-list/:userId" handler={FollowsList}>FollowsList</Route>
+    <Route name="fans-list" path="/fans-list/:userId" handler={FansList}>FansList</Route>
+    <Route name="test-infinite" path="/test-infinite" handler={TestInfinite}>TestInfinite</Route>
+    <Route name="sale-by-me" path="/sale-by-me" handler={SaleByMe}>SaleByMe</Route>
+    <DefaultRoute handler={TestInfinite} />
     <NotFoundRoute handler={NotFound} />
   </Route>
 );

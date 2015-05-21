@@ -56,4 +56,4 @@ plugins
 www
 xwalk/crosswalk*
 xwalk/*.apk
-config.js
+src-www/js/util/config.js
